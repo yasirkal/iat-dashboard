@@ -10,60 +10,14 @@
 <body class="bg-white text-slate-900">
   <div id="root"></div>
 
-  <!-- React UMD + Babel -->
+  <!-- React UMD + Babel Standalone (JSX transpile in-browser) -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.26.2/babel.min.js"></script>
 
-  <!-- Helper to add a fallback CDN if the primary fails -->
-  <script>
-    function cdnWithFallback(src1, src2) {
-      const s = document.createElement('script');
-      s.src = src1;
-      s.onerror = () => {
-        const f = document.createElement('script');
-        f.src = src2;
-        document.head.appendChild(f);
-      };
-      document.head.appendChild(s);
-    }
-  </script>
-
-  <!-- Framer Motion (optional). Fallback to jsDelivr if UNPKG blocked -->
-  <script>
-    cdnWithFallback(
-      "https://unpkg.com/framer-motion@11.0.24/dist/framer-motion.umd.min.js",
-      "https://cdn.jsdelivr.net/npm/framer-motion@11.0.24/dist/framer-motion.umd.min.js"
-    );
-  </script>
-
-  <!-- ✅ PropTypes MUST load before Recharts -->
-  <script>
-    cdnWithFallback(
-      "https://unpkg.com/prop-types@15.8.1/prop-types.min.js",
-      "https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"
-    );
-  </script>
-
-  <!-- ✅ Recharts UMD (with fallback) -->
-  <script>
-    cdnWithFallback(
-      "https://unpkg.com/recharts@2.13.3/umd/Recharts.min.js",
-      "https://cdn.jsdelivr.net/npm/recharts@2.13.3/umd/Recharts.min.js"
-    );
-  </script>
-
-  <!-- App -->
   <script type="text/babel" data-presets="env,react">
     const { useEffect, useMemo, useState } = React;
     const { createRoot } = ReactDOM;
-
-    // UMD globals + safe fallbacks
-    const FM = window.framerMotion || {};
-    const { motion = (p)=>React.createElement('div', p) } = FM; // fallback if FM blocked
-    const HAS_RECHARTS = !!(window.Recharts && window.PropTypes);
-    const RC = window.Recharts || {};
-    const { ResponsiveContainer, CartesianGrid, Tooltip, Legend, BarChart, Bar, XAxis, YAxis } = RC;
 
     // ------------------ Config ------------------
     const PROXY_BASE = "https://iat-data-proxy.yasirkaleem.workers.dev";
@@ -107,6 +61,68 @@
       return (rows || []).filter((r) => set.has(String(r.anzsco4)));
     }
 
+    // ------------------ Tiny SVG BarChart (no external libs) ------------------
+    function SimpleBarChart({ data, xKey, yKey, valueFormatter=(v)=>v }) {
+      // dimensions
+      const width = 640, height = 260, padding = { top: 10, right: 10, bottom: 60, left: 60 };
+      const innerW = width - padding.left - padding.right;
+      const innerH = height - padding.top - padding.bottom;
+
+      const labels = data.map(d => String(d[xKey]));
+      const values = data.map(d => Number(d[yKey]) || 0);
+      const maxVal = Math.max(1, ...values);
+
+      const barW = innerW / Math.max(1, data.length);
+      const tickCount = 4;
+
+      return (
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-64">
+          {/* axes */}
+          <line x1={padding.left} y1={padding.top} x2={padding.left} y2={height - padding.bottom} stroke="#cbd5e1" />
+          <line x1={padding.left} y1={height - padding.bottom} x2={width - padding.right} y2={height - padding.bottom} stroke="#cbd5e1" />
+
+          {/* y ticks */}
+          {Array.from({length: tickCount+1}).map((_,i) => {
+            const tVal = (maxVal / tickCount) * i;
+            const y = height - padding.bottom - (tVal / maxVal) * innerH;
+            return (
+              <g key={i}>
+                <line x1={padding.left-4} x2={width - padding.right} y1={y} y2={y} stroke="#f1f5f9" />
+                <text x={padding.left-8} y={y+4} textAnchor="end" fontSize="10" fill="#64748b">
+                  {valueFormatter(tVal)}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* bars */}
+          {data.map((d, i) => {
+            const v = values[i];
+            const bh = (v / maxVal) * innerH;
+            const x = padding.left + i*barW + barW*0.1;
+            const y = height - padding.bottom - bh;
+            const w = barW*0.8;
+            return (
+              <g key={i}>
+                <rect x={x} y={y} width={w} height={bh} fill="#00539f" rx="4"></rect>
+              </g>
+            );
+          })}
+
+          {/* x labels */}
+          {labels.map((l, i) => {
+            const x = padding.left + i*barW + barW*0.5;
+            const y = height - padding.bottom + 12;
+            return (
+              <g key={i} transform={`rotate(-20 ${x} ${y})`}>
+                <text x={x} y={y} textAnchor="end" fontSize="10" fill="#64748b">{l}</text>
+              </g>
+            );
+          })}
+        </svg>
+      );
+    }
+
     // ------------------ UI ------------------
     const Hero = () => (
       <section className="relative isolate overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
@@ -114,16 +130,16 @@
           <div className={"h-[40rem] w-[140%] -translate-x-1/5 -translate-y-20 rotate-6 bg-gradient-to-r " + THEME.brand.gradient + " blur-3xl"} />
         </div>
         <div className={`${THEME.layout.max} ${THEME.layout.gutter} mx-auto py-28 sm:py-36 relative`}>
-          <motion.h1 initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.9 }} className="text-4xl sm:text-6xl font-extrabold tracking-tight">
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight">
             Upskill for in-demand tech roles with <span className="text-sky-400">{THEME.brand.name}</span>
-          </motion.h1>
-          <motion.p initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.9, delay: 0.05 }} className="mt-6 max-w-2xl text-lg text-slate-200">
+          </h1>
+          <p className="mt-6 max-w-2xl text-lg text-slate-200">
             Short microcredentials in AI, Data, Cloud and Cyber — with live Australian job-market insight.
-          </motion.p>
-          <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.9, delay: 0.1 }} className="mt-10 flex flex-wrap gap-4">
+          </p>
+          <div className="mt-10 flex flex-wrap gap-4">
             <a href="#courses" className="inline-flex items-center gap-2 rounded-full bg-sky-500 px-6 py-3 font-semibold text-slate-900 hover:bg-sky-400 transition">Explore courses</a>
             <a href="#jobs" className="inline-flex items-center gap-2 rounded-full border border-slate-600 px-6 py-3 font-semibold hover:bg-slate-800/60 transition">Tech job insights</a>
-          </motion.div>
+          </div>
         </div>
       </section>
     );
@@ -210,8 +226,16 @@
         return Math.round(avg * 10) / 10;
       }, [projSel]);
 
-      const earnBar = useMemo(() => earnSel.map((r) => ({ occupation: r.occupation, value: r.median_weekly })), [earnSel]);
-      const projBar = useMemo(() => projSel.map((r) => ({ occupation: r.occupation, growth_pct: r.growth_pct, jobs_change: r.jobs_change })), [projSel]);
+      // chart data for our tiny SVG bar chart
+      const earnBar = useMemo(() => earnSel.map((r) => ({
+        occupation: r.occupation,
+        value: r.median_weekly
+      })), [earnSel]);
+
+      const projBar = useMemo(() => projSel.map((r) => ({
+        occupation: r.occupation,
+        growth_pct: r.growth_pct,
+      })), [projSel]);
 
       return (
         <section id="jobs" className="bg-slate-50">
@@ -265,44 +289,26 @@
             <div className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className={`bg-white ${THEME.radius.xl} border border-slate-200 p-6`}>
                 <h3 className="text-lg font-semibold">Median weekly earnings by occupation</h3>
-                <div className="mt-4 h-64">
-                  {HAS_RECHARTS ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={earnBar} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="occupation" interval={0} angle={-10} textAnchor="end" height={60} />
-                        <YAxis tickFormatter={(v) => cf.format(Number(v))} />
-                        <Tooltip formatter={(v) => cf.format(Number(v))} />
-                        <Legend />
-                        <Bar dataKey="value" name="Median weekly" fill={THEME.brand.primary} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="text-sm text-slate-500">Charts failed to load. Some networks block chart CDNs.</div>
-                  )}
+                <div className="mt-4">
+                  <SimpleBarChart
+                    data={earnBar}
+                    xKey="occupation"
+                    yKey="value"
+                    valueFormatter={(v)=>cf.format(Math.round(v))}
+                  />
                 </div>
                 <p className="mt-2 text-xs text-slate-500">Source: ABS Employee Earnings (curated tech ANZSCO 4-digit).</p>
               </div>
 
               <div className={`bg-white ${THEME.radius.xl} border border-slate-200 p-6`}>
                 <h3 className="text-lg font-semibold">Projected growth to 2034 (tech)</h3>
-                <div className="mt-4 h-64">
-                  {HAS_RECHARTS ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={projBar} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="occupation" interval={0} angle={-10} textAnchor="end" height={60} />
-                        <YAxis yAxisId="left" tickFormatter={(v) => `${v}%`} />
-                        <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => nf.format(Number(v))} />
-                        <Tooltip />
-                        <Legend />
-                        <Bar yAxisId="left" dataKey="growth_pct" name="Growth %" fill="#0284c7" />
-                        <Bar yAxisId="right" dataKey="jobs_change" name="Jobs added" fill="#60a5fa" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="text-sm text-slate-500">Charts failed to load. Some networks block chart CDNs.</div>
-                  )}
+                <div className="mt-4">
+                  <SimpleBarChart
+                    data={projBar}
+                    xKey="occupation"
+                    yKey="growth_pct"
+                    valueFormatter={(v)=>`${Math.round(v)}%`}
+                  />
                 </div>
                 <p className="mt-2 text-xs text-slate-500">Source: Jobs and Skills Australia – Employment Projections (to May 2034).</p>
               </div>
