@@ -10,19 +10,48 @@
 <body class="bg-white text-slate-900">
   <div id="root"></div>
 
-  <!-- React (UMD) + Babel Standalone to transpile JSX in the browser -->
+  <!-- React UMD + Babel -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.26.2/babel.min.js"></script>
 
-  <!-- Optional: Framer Motion UMD (network sometimes blocks it). We handle fallback if it fails. -->
-  <script src="https://unpkg.com/framer-motion@11.0.24/dist/framer-motion.umd.min.js"></script>
+  <!-- Helper to add a fallback CDN if the primary fails -->
+  <script>
+    function cdnWithFallback(src1, src2) {
+      const s = document.createElement('script');
+      s.src = src1;
+      s.onerror = () => {
+        const f = document.createElement('script');
+        f.src = src2;
+        document.head.appendChild(f);
+      };
+      document.head.appendChild(s);
+    }
+  </script>
 
-  <!-- ✅ PropTypes UMD must be loaded BEFORE Recharts -->
-  <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+  <!-- Framer Motion (optional). Fallback to jsDelivr if UNPKG blocked -->
+  <script>
+    cdnWithFallback(
+      "https://unpkg.com/framer-motion@11.0.24/dist/framer-motion.umd.min.js",
+      "https://cdn.jsdelivr.net/npm/framer-motion@11.0.24/dist/framer-motion.umd.min.js"
+    );
+  </script>
 
-  <!-- ✅ Recharts UMD -->
-  <script src="https://unpkg.com/recharts@2.13.3/umd/Recharts.min.js"></script>
+  <!-- ✅ PropTypes MUST load before Recharts -->
+  <script>
+    cdnWithFallback(
+      "https://unpkg.com/prop-types@15.8.1/prop-types.min.js",
+      "https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"
+    );
+  </script>
+
+  <!-- ✅ Recharts UMD (with fallback) -->
+  <script>
+    cdnWithFallback(
+      "https://unpkg.com/recharts@2.13.3/umd/Recharts.min.js",
+      "https://cdn.jsdelivr.net/npm/recharts@2.13.3/umd/Recharts.min.js"
+    );
+  </script>
 
   <!-- App -->
   <script type="text/babel" data-presets="env,react">
@@ -32,8 +61,8 @@
     // UMD globals + safe fallbacks
     const FM = window.framerMotion || {};
     const { motion = (p)=>React.createElement('div', p) } = FM; // fallback if FM blocked
+    const HAS_RECHARTS = !!(window.Recharts && window.PropTypes);
     const RC = window.Recharts || {};
-    const HAS_RECHARTS = !!window.Recharts;
     const { ResponsiveContainer, CartesianGrid, Tooltip, Legend, BarChart, Bar, XAxis, YAxis } = RC;
 
     // ------------------ Config ------------------
@@ -249,7 +278,7 @@
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="text-sm text-slate-500">Charts failed to load. Some networks block the Recharts CDN.</div>
+                    <div className="text-sm text-slate-500">Charts failed to load. Some networks block chart CDNs.</div>
                   )}
                 </div>
                 <p className="mt-2 text-xs text-slate-500">Source: ABS Employee Earnings (curated tech ANZSCO 4-digit).</p>
@@ -272,7 +301,7 @@
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="text-sm text-slate-500">Charts failed to load. Some networks block the Recharts CDN.</div>
+                    <div className="text-sm text-slate-500">Charts failed to load. Some networks block chart CDNs.</div>
                   )}
                 </div>
                 <p className="mt-2 text-xs text-slate-500">Source: Jobs and Skills Australia – Employment Projections (to May 2034).</p>
