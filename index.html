@@ -15,20 +15,23 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone@7.26.2/babel.min.js"></script>
 
-  <!-- ✅ Framer Motion UMD (correct URL) -->
-  <script src="https://cdn.jsdelivr.net/npm/framer-motion@11.0.24/dist/framer-motion.umd.min.js"></script>
+  <!-- Optional: Framer Motion UMD (network sometimes blocks it). We handle fallback if it fails. -->
+  <script src="https://unpkg.com/framer-motion@11.0.24/dist/framer-motion.umd.min.js"></script>
 
-  <!-- ✅ Recharts UMD (correct URL) -->
-  <script src="https://cdn.jsdelivr.net/npm/recharts@2.13.3/umd/Recharts.min.js"></script>
+  <!-- ✅ PropTypes UMD must be loaded BEFORE Recharts -->
+  <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+
+  <!-- ✅ Recharts UMD -->
+  <script src="https://unpkg.com/recharts@2.13.3/umd/Recharts.min.js"></script>
 
   <!-- App -->
   <script type="text/babel" data-presets="env,react">
     const { useEffect, useMemo, useState } = React;
     const { createRoot } = ReactDOM;
 
-    // UMD globals
+    // UMD globals + safe fallbacks
     const FM = window.framerMotion || {};
-    const { motion = (p)=>React.createElement('div', p) } = FM; // safe fallback if blocked
+    const { motion = (p)=>React.createElement('div', p) } = FM; // fallback if FM blocked
     const RC = window.Recharts || {};
     const HAS_RECHARTS = !!window.Recharts;
     const { ResponsiveContainer, CartesianGrid, Tooltip, Legend, BarChart, Bar, XAxis, YAxis } = RC;
