@@ -13,20 +13,22 @@
   <!-- React (UMD) + Babel Standalone to transpile JSX in the browser -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.26.2/babel.min.js"></script>
 
-  <!-- framer-motion UMD + Recharts UMD -->
-  <script src="https://unpkg.com/framer-motion/dist/framer-motion.umd.js"></script>
-  <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
+  <!-- ✅ Framer Motion UMD (correct URL) -->
+  <script src="https://cdn.jsdelivr.net/npm/framer-motion@11.0.24/dist/framer-motion.umd.min.js"></script>
 
-  <!-- Your app: IMPORTANT → add data-presets so JSX compiles -->
+  <!-- ✅ Recharts UMD (correct URL) -->
+  <script src="https://cdn.jsdelivr.net/npm/recharts@2.13.3/umd/Recharts.min.js"></script>
+
+  <!-- App -->
   <script type="text/babel" data-presets="env,react">
     const { useEffect, useMemo, useState } = React;
     const { createRoot } = ReactDOM;
 
-    // Safely get UMD globals
+    // UMD globals
     const FM = window.framerMotion || {};
-    const { motion = ((p)=>React.createElement('div', p)) } = FM; // fallback div if FM blocked
+    const { motion = (p)=>React.createElement('div', p) } = FM; // safe fallback if blocked
     const RC = window.Recharts || {};
     const HAS_RECHARTS = !!window.Recharts;
     const { ResponsiveContainer, CartesianGrid, Tooltip, Legend, BarChart, Bar, XAxis, YAxis } = RC;
